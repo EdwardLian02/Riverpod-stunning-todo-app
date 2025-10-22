@@ -1,73 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:riverpod_todo_app/model/todo_model.dart';
+import 'package:riverpod_todo_app/provider/todo_notifier.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends HookConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final todoListProvider = ref.watch(todoNotifierProvider);
 
-class _HomeScreenState extends State<HomeScreen> {
-  final List<TodoModel> _todos = [
-    TodoModel(
-      title: 'Morning Meditation',
-      description: '15 minutes of mindfulness meditation',
-      isCompleted: true,
-      category: 'Health',
-      priority: Priority.medium,
-      time: '07:00 AM',
-    ),
-    TodoModel(
-      title: 'Team Meeting',
-      description: 'Weekly project sync with design team',
-      isCompleted: false,
-      category: 'Work',
-      priority: Priority.high,
-      time: '10:30 AM',
-    ),
-    TodoModel(
-      title: 'Grocery Shopping',
-      description: 'Buy fruits, vegetables, and milk',
-      isCompleted: false,
-      category: 'Personal',
-      priority: Priority.low,
-      time: '06:00 PM',
-    ),
-    TodoModel(
-      title: 'Read Book',
-      description: 'Atomic Habits - Chapter 5',
-      isCompleted: false,
-      category: 'Learning',
-      priority: Priority.medium,
-      time: '09:00 PM',
-    ),
-  ];
-
-  void _addTodo() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => const AddTodoSheet(),
-    );
-  }
-
-  void _toggleTodo(int index) {
-    setState(() {
-      _todos[index].isCompleted = !_todos[index].isCompleted;
-    });
-  }
-
-  void _deleteTodo(int index) {
-    setState(() {
-      _todos.removeAt(index);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light.copyWith(
         statusBarColor: Colors.transparent,
@@ -82,7 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildHeader(),
 
               // Stats Cards
-              _buildStatsCards(),
+              _buildStatsCards(todoListProvider),
 
               // Task List
               Expanded(child: _buildTaskList()),
@@ -90,7 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         floatingActionButton: FloatingActionButton(
-          onPressed: _addTodo,
+          onPressed: () => _addTodo(context),
           backgroundColor: Theme.of(context).colorScheme.primary,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
@@ -99,6 +42,15 @@ class _HomeScreenState extends State<HomeScreen> {
           child: const Icon(Icons.add, size: 28),
         ),
       ),
+    );
+  }
+
+  void _addTodo(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const AddTodoSheet(),
     );
   }
 
@@ -115,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Hello, Alex!',
+                    'Yo, Alex!',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w600,
@@ -186,11 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildStatsCards() {
-    final completed = _todos.where((todo) => todo.isCompleted).length;
-    final total = _todos.length;
-    final progress = total > 0 ? completed / total : 0;
-
+  Widget _buildStatsCards(todoListProvider) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Row(
@@ -198,7 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Expanded(
             child: _StatCard(
               title: 'Progress',
-              value: '${(progress * 100).toInt()}%',
+              value: '${(todoListProvider. * 100).toInt()}%',
               subtitle: '$completed/$total completed',
               color: Theme.of(context).colorScheme.primary,
               icon: Icons.trending_up,
@@ -435,9 +383,8 @@ class _TodoCard extends StatelessWidget {
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: Theme.of(context).colorScheme.onSurface,
-                    decoration: todo.isCompleted
-                        ? TextDecoration.lineThrough
-                        : null,
+                    decoration:
+                        todo.isCompleted ? TextDecoration.lineThrough : null,
                     decorationColor: Theme.of(context).colorScheme.primary,
                   ),
                 ),
@@ -449,9 +396,8 @@ class _TodoCard extends StatelessWidget {
                     color: Theme.of(
                       context,
                     ).colorScheme.onSurface.withOpacity(0.6),
-                    decoration: todo.isCompleted
-                        ? TextDecoration.lineThrough
-                        : null,
+                    decoration:
+                        todo.isCompleted ? TextDecoration.lineThrough : null,
                   ),
                 ),
                 const SizedBox(height: 8),
