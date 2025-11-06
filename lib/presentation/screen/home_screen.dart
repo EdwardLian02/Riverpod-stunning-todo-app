@@ -1,16 +1,25 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:riverpod_todo_app/model/todo_model.dart';
 import 'package:riverpod_todo_app/provider/todo_notifier.dart';
 
-class HomeScreen extends HookConsumerWidget {
-  const HomeScreen({super.key});
+class TodoApp extends ConsumerWidget {
+  const TodoApp({super.key});
+
+  void _addTodo(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const AddTodoSheet(),
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final todoListProvider = ref.watch(todoNotifierProvider);
-
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light.copyWith(
         statusBarColor: Colors.transparent,
@@ -22,13 +31,15 @@ class HomeScreen extends HookConsumerWidget {
           child: Column(
             children: [
               // Header
-              _buildHeader(),
+              _buildHeader(context, ref),
 
               // Stats Cards
-              _buildStatsCards(todoListProvider),
+              _buildStatsCards(context, ref),
 
               // Task List
-              Expanded(child: _buildTaskList()),
+              Expanded(
+                child: _buildTaskList(context, ref),
+              ),
             ],
           ),
         ),
@@ -45,16 +56,8 @@ class HomeScreen extends HookConsumerWidget {
     );
   }
 
-  void _addTodo(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => const AddTodoSheet(),
-    );
-  }
-
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context, WidgetRef ref) {
+    final todos = ref.watch(todoProvider);
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: Column(
@@ -67,7 +70,7 @@ class HomeScreen extends HookConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Yo, Alex!',
+                    'Hello, Alex!',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w600,
@@ -76,12 +79,13 @@ class HomeScreen extends HookConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${_todos.where((todo) => !todo.isCompleted).length} tasks today',
+                    '${todos.where((todo) => !todo.isCompleted).length} tasks today',
                     style: TextStyle(
                       fontSize: 16,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onBackground.withOpacity(0.7),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onBackground
+                          .withOpacity(0.7),
                     ),
                   ),
                 ],
@@ -118,15 +122,13 @@ class HomeScreen extends HookConsumerWidget {
               decoration: InputDecoration(
                 hintText: 'Search tasks...',
                 hintStyle: TextStyle(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withOpacity(0.5),
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
                 ),
                 prefixIcon: Icon(
                   Icons.search,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withOpacity(0.5),
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
                 ),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(vertical: 16),
@@ -138,7 +140,12 @@ class HomeScreen extends HookConsumerWidget {
     );
   }
 
-  Widget _buildStatsCards(todoListProvider) {
+  Widget _buildStatsCards(BuildContext context, WidgetRef ref) {
+    final todos = ref.watch(todoProvider);
+    final total = todos.length;
+    final completed = ref.watch(completedCountProvider);
+    final progress = ref.watch(completedRateProvider);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Row(
@@ -146,7 +153,7 @@ class HomeScreen extends HookConsumerWidget {
           Expanded(
             child: _StatCard(
               title: 'Progress',
-              value: '${(todoListProvider. * 100).toInt()}%',
+              value: '${(progress * 100).toInt()}%',
               subtitle: '$completed/$total completed',
               color: Theme.of(context).colorScheme.primary,
               icon: Icons.trending_up,
@@ -156,7 +163,7 @@ class HomeScreen extends HookConsumerWidget {
           Expanded(
             child: _StatCard(
               title: 'Today',
-              value: '${_todos.length}',
+              value: '${todos.length}',
               subtitle: 'Total tasks',
               color: Colors.orange,
               icon: Icons.task,
@@ -167,7 +174,8 @@ class HomeScreen extends HookConsumerWidget {
     );
   }
 
-  Widget _buildTaskList() {
+  Widget _buildTaskList(BuildContext context, WidgetRef ref) {
+    final todos = ref.watch(todoProvider);
     return Container(
       margin: const EdgeInsets.only(top: 24),
       decoration: BoxDecoration(
@@ -193,18 +201,15 @@ class HomeScreen extends HookConsumerWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.primary.withOpacity(0.1),
+                    color:
+                        Theme.of(context).colorScheme.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    '${_todos.length}',
+                    '${todos.length}',
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.primary,
                       fontWeight: FontWeight.w600,
@@ -217,13 +222,16 @@ class HomeScreen extends HookConsumerWidget {
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _todos.length,
+              itemCount: todos.length,
               itemBuilder: (context, index) {
                 return _TodoCard(
-                  todo: _todos[index],
-                  onToggle: () => _toggleTodo(index),
-                  onDelete: () => _deleteTodo(index),
-                );
+                    todo: todos[index],
+                    onToggle: () => ref
+                        .read(todoProvider.notifier)
+                        .toggleTodo(todos[index].id),
+                    onDelete: () => ref
+                        .read(todoProvider.notifier)
+                        .removeTodo(todos[index].id));
               },
             ),
           ),
@@ -315,7 +323,7 @@ class _StatCard extends StatelessWidget {
 }
 
 class _TodoCard extends StatelessWidget {
-  final TodoModel todo;
+  final Todo todo;
   final VoidCallback onToggle;
   final VoidCallback onDelete;
 
@@ -357,9 +365,10 @@ class _TodoCard extends StatelessWidget {
                 border: Border.all(
                   color: todo.isCompleted
                       ? Theme.of(context).colorScheme.primary
-                      : Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withOpacity(0.3),
+                      : Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.3),
                   width: 2,
                 ),
                 borderRadius: BorderRadius.circular(8),
@@ -393,9 +402,10 @@ class _TodoCard extends StatelessWidget {
                   todo.description,
                   style: TextStyle(
                     fontSize: 14,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withOpacity(0.6),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.6),
                     decoration:
                         todo.isCompleted ? TextDecoration.lineThrough : null,
                   ),
@@ -405,9 +415,9 @@ class _TodoCard extends StatelessWidget {
                   children: [
                     _buildChip(context, todo.category, Icons.category_outlined),
                     const SizedBox(width: 8),
-                    _buildChip(context, todo.time, Icons.access_time_outlined),
+                    // _buildChip(context, todo.time, Icons.access_time_outlined),
                     const SizedBox(width: 8),
-                    _buildPriorityChip(todo.priority),
+                    _buildPriorityChip(todo.priority!),
                   ],
                 ),
               ],
@@ -483,7 +493,10 @@ class _TodoCard extends StatelessWidget {
           Container(
             width: 6,
             height: 6,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
           ),
           const SizedBox(width: 4),
           Text(
@@ -500,11 +513,13 @@ class _TodoCard extends StatelessWidget {
   }
 }
 
-class AddTodoSheet extends StatelessWidget {
+class AddTodoSheet extends HookConsumerWidget {
   const AddTodoSheet({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final titleController = useTextEditingController();
+    final desController = useTextEditingController();
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -539,6 +554,7 @@ class AddTodoSheet extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           TextField(
+            controller: titleController,
             decoration: InputDecoration(
               labelText: 'Task Title',
               labelStyle: TextStyle(
@@ -551,6 +567,7 @@ class AddTodoSheet extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           TextField(
+            controller: desController,
             maxLines: 3,
             decoration: InputDecoration(
               labelText: 'Description',
@@ -568,6 +585,10 @@ class AddTodoSheet extends StatelessWidget {
             height: 56,
             child: ElevatedButton(
               onPressed: () {
+                final todo = Todo.create(
+                    title: titleController.text,
+                    description: desController.text);
+                ref.read(todoProvider.notifier).addTodo(todo);
                 Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
@@ -580,7 +601,10 @@ class AddTodoSheet extends StatelessWidget {
               ),
               child: const Text(
                 'Add Task',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
